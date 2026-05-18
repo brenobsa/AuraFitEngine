@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Text?>
+
+<HBox fx:id="rootContainer" spacing="20" styleClass="main-bg" stylesheets="@style.css"
+      xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.iafitness.aurafitengine.controller.MainController">
+
+    <padding>
+        <Insets bottom="20" left="20" right="20" top="20" />
+    </padding>
+
+    <VBox spacing="15" HBox.hgrow="ALWAYS" styleClass="glass-panel">
+        <Text text="AuraFit Engine - Configuração" styleClass="header-text" />
+
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Divisão de Treino:" style="-fx-text-fill: white; -fx-font-weight: bold;" />
+            <ComboBox fx:id="comboDivisao" promptText="Selecione..." styleClass="input-field" prefWidth="120" />
+            <Button text="Iniciar Nova Rotina" onAction="#handleIniciarRotina" styleClass="action-button" />
+        </HBox>
+
+        <Separator style="-fx-background-color: #333;" />
+
+        <TextArea fx:id="chatArea" editable="false" wrapText="true" VBox.vgrow="ALWAYS" styleClass="chat-display" />
+
+        <HBox spacing="10">
+            <TextField fx:id="userInputField" promptText="Peça alterações, ex: 'Quero mais foco em tríceps no Treino A'..."
+                       HBox.hgrow="ALWAYS" styleClass="input-field" onAction="#handleSendAction"/>
+            <Button fx:id="sendButton" text="ADAPTAR" onAction="#handleSendAction" styleClass="action-button" />
+        </HBox>
+    </VBox>
+
+    <VBox spacing="15" minWidth="460" styleClass="glass-panel">
+
+        <HBox spacing="15" alignment="CENTER_LEFT">
+            <Text text="Treino Atual" styleClass="header-text" HBox.hgrow="ALWAYS" />
+            <Region HBox.hgrow="ALWAYS" />
+            <Label text="Ficha:" style="-fx-text-fill: #aaa; -fx-font-weight: bold;" />
+            <ComboBox fx:id="comboTreinoAtual" prefWidth="110" styleClass="input-field" onAction="#handleAlternarTreinoVisual" />
+        </HBox>
+
+        <TableView fx:id="workoutTable" VBox.vgrow="ALWAYS" styleClass="custom-table">
+            <columns>
+                <TableColumn fx:id="colExercicio" text="Exercício" prefWidth="180" />
+                <TableColumn fx:id="colFoco" text="Foco" prefWidth="90" />
+                <TableColumn fx:id="colTipo" text="Tipo" prefWidth="85" />
+                <TableColumn fx:id="colDificuldade" text="Dificuldade" prefWidth="85" />
+            </columns>
+        </TableView>
+
+        <VBox spacing="10" style="-fx-border-color: #333; -fx-border-width: 1 0 0 0; -fx-padding: 15 0 0 0;">
+            <Label fx:id="lblExercicioSelecionado" text="Selecione um exercício acima para registrar" style="-fx-text-fill: #aaa; -fx-font-weight: bold;" />
+
+            <HBox spacing="10">
+                <TextField fx:id="txtSeries" promptText="Séries" prefWidth="80" styleClass="input-field"/>
+                <TextField fx:id="txtRepeticoes" promptText="Reps" prefWidth="80" styleClass="input-field"/>
+                <TextField fx:id="txtCarga" promptText="Carga (kg)" HBox.hgrow="ALWAYS" styleClass="input-field"/>
+            </HBox>
+
+            <Button fx:id="btnRegistrarCarga" text="REGISTRAR CARGA DE HOJE" onAction="#handleRegistrarCarga" maxWidth="Infinity" styleClass="action-button" />
+        </VBox>
+
+        <Button text="SALVAR FICHA DE TREINO MASTER" onAction="#handleSaveWorkout" maxWidth="Infinity" styleClass="save-button" />
+    </VBox>
+</HBox>

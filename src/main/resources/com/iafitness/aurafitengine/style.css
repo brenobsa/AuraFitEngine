@@ -1,0 +1,34 @@
+.main-bg { -fx-background-color: #0f0f0f; }
+.glass-panel { -fx-background-color: rgba(25, 25, 25, 0.95); -fx-background-radius: 12; -fx-padding: 20; -fx-border-color: #deff9a; -fx-border-width: 0.5; }
+.header-text { -fx-fill: #deff9a; -fx-font-size: 20px; -fx-font-weight: bold; -fx-font-family: "Segoe UI"; }
+.chat-display { -fx-control-inner-background: #161616; -fx-text-fill: #daffde; -fx-font-family: "Segoe UI"; -fx-font-size: 14px; -fx-background-radius: 8; }
+.input-field { -fx-background-color: #222222; -fx-text-fill: #ffffff; -fx-prompt-text-fill: #777777; -fx-background-radius: 6; -fx-padding: 10; -fx-border-color: #333; -fx-border-radius: 6; }
+.input-field:focused { -fx-border-color: #deff9a; }
+.action-button { -fx-background-color: #deff9a; -fx-text-fill: #000000; -fx-font-weight: bold; -fx-background-radius: 6; -fx-padding: 10 20; -fx-cursor: hand; }
+.action-button:hover { -fx-background-color: #c0df82; }
+.custom-table { -fx-background-color: transparent; -fx-base: #1a1a1a; -fx-control-inner-background: #1a1a1a; }
+.custom-table .column-header { -fx-background-color: #222; -fx-text-fill: #deff9a; }
+.save-button { -fx-background-color: transparent; -fx-text-fill: #deff9a; -fx-border-color: #deff9a; -fx-border-radius: 6; -fx-padding: 12; -fx-cursor: hand; }
+.save-button:hover { -fx-background-color: rgba(222, 255, 154, 0.1); }
+
+/* Cor do texto do item que aparece selecionado no ComboBox */
+.combo-box .list-cell {
+    -fx-text-fill: #ffffff; /* Branco */
+}
+
+/* Cor do texto das opções dentro do menu suspenso */
+.combo-box .list-view .list-cell {
+    -fx-text-fill: #ffffff; /* Branco */
+    -fx-background-color: #222222; /* Cor de fundo escura para as opções */
+}
+
+/* Cor de destaque quando você passa o mouse sobre uma opção */
+.combo-box .list-view .list-cell:hover {
+    -fx-background-color: #deff9a; /* Cor Neon (AuraFit accent) */
+    -fx-text-fill: #000000; /* Texto preto ao destacar */
+}
+
+/* Cor do texto do prompt (o que aparece antes de selecionar algo) */
+.combo-box {
+    -fx-prompt-text-fill: #ffffff;
+}
