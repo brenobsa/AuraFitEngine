@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TreeView?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane prefHeight="700.0" prefWidth="1100.0" style="-fx-background-color: #121212;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.iafitness.aurafitengine.controller.MinhasFichasController">
+    <children>
+        <HBox alignment="CENTER_LEFT" prefHeight="60.0" prefWidth="1100.0" spacing="15.0" style="-fx-background-color: #1a1a1a; -fx-border-color: #bbf246; -fx-border-width: 0 0 1 0;" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <padding>
+                <Insets left="20.0" />
+            </padding>
+            <children>
+                <Button mnemonicParsing="false" onAction="#handleVoltarPainel" style="-fx-background-color: #bbf246; -fx-text-fill: #121212; -fx-cursor: hand; -fx-font-weight: bold;" text="← VOLTAR" />
+                <Label text="AuraFit Engine - Minhas Fichas Acadêmicas Salvas" textFill="WHITE">
+                    <font>
+                        <Font name="System Bold" size="16.0" />
+                    </font>
+                </Label>
+            </children>
+        </HBox>
+
+        <HBox layoutY="60.0" prefHeight="640.0" prefWidth="1100.0" spacing="20.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="60.0">
+            <padding>
+                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+            </padding>
+            <children>
+
+                <!-- HISTÓRICO DE PLANILHAS UTILIZANDO TREEVIEW (HIERARQUIA COMPLETA) -->
+                <VBox prefWidth="280.0" spacing="10.0" style="-fx-border-color: #333333; -fx-padding: 15; -fx-background-color: #161616; -fx-background-radius: 5;">
+                    <children>
+                        <Label text="Histórico de Planilhas" textFill="#bbf246">
+                            <font>
+                                <Font name="System Bold" size="16.0" />
+                            </font>
+                        </Label>
+                        <TreeView fx:id="treeTreinosSalvos" prefHeight="550.0" style="-fx-background-color: #121212; -fx-control-inner-background: #121212;" VBox.vgrow="ALWAYS" />
+                    </children>
+                </VBox>
+
+                <!-- CONTEÚDO CENTRALIZADO SEM INPUTS INFERIORES -->
+                <VBox spacing="15.0" HBox.hgrow="ALWAYS">
+                    <children>
+                        <TableView fx:id="tableExerciciosSalvos" prefHeight="420.0" style="-fx-background-color: #161616; -fx-control-inner-background: #161616;" VBox.vgrow="ALWAYS">
+                            <columns>
+                                <TableColumn fx:id="colExercicioSalvo" prefWidth="220.0" text="Exercício" />
+                                <TableColumn fx:id="colSeriesSalvas" prefWidth="90.0" text="Séries Mapeadas" />
+                                <TableColumn fx:id="colRepsSalvas" prefWidth="100.0" text="Repetições Base" />
+                                <TableColumn fx:id="colCargaSalva" prefWidth="120.0" text="Carga Registrada" />
+                            </columns>
+                            <columnResizePolicy>
+                                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                            </columnResizePolicy>
+                        </TableView>
+
+                        <!-- CONSOLE DE PERFORMANCE DA IA COM SELETOR DE DATA SEGURO -->
+                        <VBox spacing="10.0" style="-fx-border-color: #333333; -fx-padding: 15; -fx-background-color: #161616; -fx-background-radius: 5;">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" spacing="15.0">
+                                    <children>
+                                        <Label text="Data para Registro das Cargas:" textFill="#bbf246">
+                                            <font>
+                                                <Font name="System Bold" size="13.0" />
+                                            </font>
+                                        </Label>
+                                        <DatePicker fx:id="dpDataTreino" prefHeight="30.0" prefWidth="160.0" style="-fx-control-inner-background: #222222;" />
+                                        <Label text="💡 Dica: Dê dois cliques na célula de Carga para digitar o peso e aperte Enter." textFill="#aaaaaa">
+                                            <font>
+                                                <Font size="11.0" />
+                                            </font>
+                                        </Label>
+                                    </children>
+                                </HBox>
+
+                                <Label text="Módulo de Inteligência Artificial Biomecânica (AuraFit Performance):" textFill="WHITE">
+                                    <font>
+                                        <Font size="11.0" />
+                                    </font>
+                                </Label>
+                                <TextArea fx:id="feedbackArea" editable="false" prefHeight="90.0" style="-fx-control-inner-background: #121212; -fx-text-fill: #bbf246; -fx-font-family: 'Consolas';" wrapText="true" />
+                            </children>
+                        </VBox>
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+    </children>
+</AnchorPane>

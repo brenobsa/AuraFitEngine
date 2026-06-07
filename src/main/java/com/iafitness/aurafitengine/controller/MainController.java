@@ -1,129 +1,218 @@
 package com.iafitness.aurafitengine.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iafitness.aurafitengine.ai.AiEngine;
 import com.iafitness.aurafitengine.model.Exercicio;
-import com.iafitness.aurafitengine.model.HistoricoCarga;
+import com.iafitness.aurafitengine.model.TemplateItemTreino;
+import com.iafitness.aurafitengine.model.TemplatePeriodizacao;
 import com.iafitness.aurafitengine.model.Usuario;
-import com.iafitness.aurafitengine.repository.ExercicioRepository;
+import com.iafitness.aurafitengine.model.DivisaoTreino;
 import com.iafitness.aurafitengine.repository.TreinoRepository;
+import com.iafitness.aurafitengine.repository.DivisaoTreinoRepository;
+
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.Stage;
 
-import java.text.Normalizer;
-import java.time.LocalDateTime;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 public class MainController {
 
-    @FXML private ComboBox<String> comboDivisao;
+    @FXML private ComboBox<DivisaoTreino> comboDivisao;
+    @FXML private ComboBox<String> comboNivel;
+    @FXML private ComboBox<String> comboTreinoAtual;
+
     @FXML private TextArea chatArea;
     @FXML private TextField userInputField;
     @FXML private Button sendButton;
 
-    @FXML private ComboBox<String> comboTreinoAtual;
     @FXML private TableView<Exercicio> workoutTable;
     @FXML private TableColumn<Exercicio, String> colExercicio;
-    @FXML private TableColumn<Exercicio, String> colFoco;
-    @FXML private TableColumn<Exercicio, String> colTipo;
-    @FXML private TableColumn<Exercicio, String> colDificuldade;
+    @FXML private TableColumn<Exercicio, String> colGrupo;
+    @FXML private TableColumn<Exercicio, String> colSeries;
+    @FXML private TableColumn<Exercicio, String> colRepeticoes;
 
-    @FXML private TextField txtCarga;
-    @FXML private TextField txtRepeticoes;
-    @FXML private TextField txtSeries;
-    @FXML private Label lblExercicioSelecionado;
-    @FXML private Button btnRegistrarCarga;
+    @FXML private Button btnMenu;
 
     private AiEngine aiEngine;
-    private ExercicioRepository exercicioRepo;
     private TreinoRepository treinoRepo;
-    private Exercicio exercicioSelecionado;
     private Usuario usuarioLogado;
     private ObservableList<Exercicio> listaExerciciosTabela;
+    private Map<String, List<Exercicio>> mapaFichasTreino = new HashMap<>();
 
-    private Map<String, List<Exercicio>> mapaFichasTreino;
-    private final ObjectMapper mapper = new ObjectMapper();
+    // Lista global em memória para guardar todas as planilhas salvas pelo usuário nesta sessão
+    public static List<String[]> treinosSalvosCompartilhados = new ArrayList<>();
+    static {
+        treinosSalvosCompartilhados.add(new String[]{"AB (Superior/Inferior)", "Hipertrofia"});
+    }
 
     @FXML
     public void initialize() {
         this.aiEngine = new AiEngine();
-        this.exercicioRepo = new ExercicioRepository();
         this.treinoRepo = new TreinoRepository();
         this.listaExerciciosTabela = FXCollections.observableArrayList();
-        this.mapaFichasTreino = new HashMap<>();
 
         this.usuarioLogado = new Usuario();
         this.usuarioLogado.setId(1);
 
-        comboDivisao.setItems(FXCollections.observableArrayList("AB", "ABC", "ABAB", "ABCD", "Fullbody"));
-        comboDivisao.setValue("ABC");
+        DivisaoTreinoRepository divisaoRepo = new DivisaoTreinoRepository();
+        List<DivisaoTreino> divisoesDoBanco = divisaoRepo.buscarTodas();
+        if (divisoesDoBanco != null && !divisoesDoBanco.isEmpty()) {
+            comboDivisao.setItems(FXCollections.observableArrayList(divisoesDoBanco));
+            comboDivisao.setValue(divisoesDoBanco.get(0));
+        }
+
+        comboNivel.setItems(FXCollections.observableArrayList("Hipertrofia", "Força", "Resistência", "Emagrecimento"));
+        comboNivel.setValue("Hipertrofia");
 
         comboTreinoAtual.setItems(FXCollections.observableArrayList("A"));
         comboTreinoAtual.setValue("A");
 
         colExercicio.setCellValueFactory(new PropertyValueFactory<>("nome"));
-        colFoco.setCellValueFactory(new PropertyValueFactory<>("focoAnatomico"));
-        colTipo.setCellValueFactory(new PropertyValueFactory<>("tipo"));
-        colDificuldade.setCellValueFactory(new PropertyValueFactory<>("dificuldade"));
+        colSeries.setCellValueFactory(new PropertyValueFactory<>("seriesPrescritas"));
+        colRepeticoes.setCellValueFactory(new PropertyValueFactory<>("repeticoesPrescritas"));
+
+        colGrupo.setCellValueFactory(cellData -> {
+            if (cellData.getValue() != null && cellData.getValue().getGrupoMuscular() != null) {
+                return new SimpleStringProperty(cellData.getValue().getGrupoMuscular().getNome());
+            }
+            return new SimpleStringProperty("-");
+        });
 
         workoutTable.setItems(listaExerciciosTabela);
-        btnRegistrarCarga.setDisable(true);
 
-        chatArea.appendText("AuraFit Engine: Selecione uma divisão de treino acima para inicializar.\n");
+        // MODIFICAÇÃO: Criação do menu suspenso dinâmico para as 3 barrinhas
+        ContextMenu menuSuspenso = new ContextMenu();
+        MenuItem itemFichas = new MenuItem("📋 Minhas Fichas");
+        MenuItem itemEstatistica = new MenuItem("📊 Estatísticas de Carga");
 
-        workoutTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
-            if (newSelection != null) {
-                exercicioSelecionado = newSelection;
-                lblExercicioSelecionado.setText("Registrar para: " + exercicioSelecionado.getNome());
-                btnRegistrarCarga.setDisable(false);
-            }
+        // Vincula as ações de clique de cada opção do menu
+        itemFichas.setOnAction(e -> handleNavegarParaMinhasFichas());
+        itemEstatistica.setOnAction(e -> handleNavegarParaEstatiticas());
+
+        menuSuspenso.getItems().addAll(itemFichas, itemEstatistica);
+
+        // Faz o menu aparecer logo abaixo do botão ao clicar nele
+        btnMenu.setOnMouseClicked(event -> {
+            menuSuspenso.show(btnMenu, event.getScreenX(), event.getScreenY());
         });
     }
 
     @FXML
     private void handleIniciarRotina() {
-        String divisao = comboDivisao.getValue();
+        DivisaoTreino divisaoObjeto = comboDivisao.getValue();
+        String tipoTreino = comboNivel.getValue();
+        if (divisaoObjeto == null || tipoTreino == null) return;
+
+        String divisaoNome = divisaoObjeto.getNome();
         chatArea.clear();
-        listaExerciciosTabela.clear();
         mapaFichasTreino.clear();
-        btnRegistrarCarga.setDisable(true);
-        lblExercicioSelecionado.setText("Selecione um exercício acima para registrar");
 
-        atualizarOpcoesSeletorTreino(divisao);
+        atualizarAbasVisuais(divisaoNome);
 
-        chatArea.appendText("AuraFit Engine: Conectando ao MySQL e carregando catálogo de exercícios...\n");
-        chatArea.appendText("A estruturar rotina [" + divisao + "] biomecanicamente ideal... Aguarde.\n\n");
+        chatArea.appendText("AuraFit Engine: Consultando banco de dados para " + divisaoNome + "...\n");
         sendButton.setDisable(true);
-
-        String prompt = "Monte uma rotina completa dividida exatamente na estrutura " + divisao + ". " +
-                "Distribua os exercícios de forma correta e informe a letra da ficha correspondente de cada exercício no JSON.";
 
         new Thread(() -> {
             try {
-                List<Exercicio> contextoBanco = new ArrayList<>();
-                contextoBanco.addAll(exercicioRepo.buscarPorGrupoMuscular("Peito"));
-                contextoBanco.addAll(exercicioRepo.buscarPorGrupoMuscular("Costas"));
-                contextoBanco.addAll(exercicioRepo.buscarPorGrupoMuscular("Pernas"));
-                contextoBanco.addAll(exercicioRepo.buscarPorGrupoMuscular("Bíceps"));
+                TemplatePeriodizacao template = treinoRepo.buscarTemplatePorDiretrizes(divisaoNome, tipoTreino);
 
-                String respostaIA = aiEngine.enviarMensagem(prompt, contextoBanco);
-                processarRespostaIA(respostaIA);
-            } catch (Exception e) {
+                if (template == null || template.getItens() == null || template.getItens().isEmpty()) {
+                    Platform.runLater(() -> {
+                        chatArea.appendText("Erro: Template não populado ou não encontrado no Banco para esta combinação.\n");
+                        sendButton.setDisable(false);
+                    });
+                    return;
+                }
+
+                for (TemplateItemTreino item : template.getItens()) {
+                    String letra = item.getFichaLetra().toUpperCase();
+                    mapaFichasTreino.computeIfAbsent(letra, k -> new ArrayList<>()).add(item.getExercicio());
+                }
+
+                Platform.runLater(this::handleAlternarTreinoVisual);
+
+                String tempoFormatado = template.getTempoDescansoS() + " segundos";
+                if (template.getTempoDescansoS() == 90) tempoFormatado = "90seg ou 1min e 30seg";
+                else if (template.getTempoDescansoS() == 150) tempoFormatado = "150seg ou 2min e 30seg";
+                else if (template.getTempoDescansoS() == 180) tempoFormatado = "180seg ou 3 minutos";
+                else if (template.getTempoDescansoS() == 240) tempoFormatado = "240seg ou 4 minutos";
+
+                String vezesSemana = "3 a 5 vezes";
+                if (divisaoNome.contains("AB (")) vezesSemana = "4 vezes";
+                else if (divisaoNome.contains("ABC")) vezesSemana = "3 a 6 vezes";
+                else if (divisaoNome.contains("ABCD")) vezesSemana = "4 vezes";
+                else if (divisaoNome.contains("FULLBODY")) vezesSemana = "3 vezes";
+                else if (divisaoNome.contains("ABAB")) vezesSemana = "4 vezes";
+
+                String baseConhecimentoIA = "";
+                if (tipoTreino.equalsIgnoreCase("Força")) {
+                    baseConhecimentoIA = "Serve para aumentar a capacidade do sistema nervoso e dos músculos de levantarem cargas máximas. Sua função é estimular o recrutamento de mais fibras musculares ao mesmo tempo.";
+                } else if (tipoTreino.equalsIgnoreCase("Hipertrofia")) {
+                    baseConhecimentoIA = "Serve para ganhar massa muscular, volume e desenhar o formato do corpo esteticamente. Sua função é gerar microlesões controladas nas fibras.";
+                } else if (tipoTreino.equalsIgnoreCase("Resistência")) {
+                    baseConhecimentoIA = "Serve para melhorar o fôlego dos músculos e a capacidade de fazer esforço por muito tempo sem cansar.";
+                } else if (tipoTreino.equalsIgnoreCase("Emagrecimento")) {
+                    baseConhecimentoIA = "Serve para acelerar a queima de gordura corporal, mantendo a massa magra e tonificando o corpo.";
+                }
+
+                String promptReescrita =
+                        "Você é o AuraFit Coach. Reescreva de forma curta e motivadora em até 20 palavras:\n" + baseConhecimentoIA;
+
+                String fraseReformulada = aiEngine.enviarMensagemLivre(promptReescrita).trim();
+
+                String resultadoFinal =
+                        template.getTipoEstimulo() + ": " + fraseReformulada + "\n\n" +
+                                "Divisao de treino: " + template.getNomeDivisao() + "\n\n" +
+                                "Tempo de descanso: " + tempoFormatado + "\n\n" +
+                                "Vezes por semana: " + vezesSemana;
+
                 Platform.runLater(() -> {
-                    chatArea.appendText("Erro ao carregar contexto RAG do banco: " + e.getMessage() + "\n");
+                    chatArea.setText("AuraFit Personal Trainer:\n" + resultadoFinal + "\n\n-----------------------\n");
+                    sendButton.setDisable(false);
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Platform.runLater(() -> {
+                    chatArea.appendText("Erro interno ao processar.\n");
                     sendButton.setDisable(false);
                 });
             }
         }).start();
+    }
+
+    private void atualizarAbasVisuais(String d) {
+        comboTreinoAtual.getItems().clear();
+        if (d.contains("AB (")) comboTreinoAtual.getItems().addAll("A", "B");
+        else if (d.contains("ABC")) comboTreinoAtual.getItems().addAll("A", "B", "C");
+        else if (d.contains("ABCD")) comboTreinoAtual.getItems().addAll("A", "B", "C", "D");
+        else if (d.contains("ABAB")) comboTreinoAtual.getItems().addAll("A", "B");
+        else comboTreinoAtual.getItems().add("A");
+        comboTreinoAtual.setValue("A");
+    }
+
+    @FXML
+    private void handleAlternarTreinoVisual() {
+        String ficha = comboTreinoAtual.getValue();
+        if (ficha == null) return;
+
+        listaExerciciosTabela.clear();
+        List<Exercicio> listaFiltrada = mapaFichasTreino.get(ficha);
+        if (listaFiltrada != null) {
+            listaExerciciosTabela.setAll(listaFiltrada);
+        }
     }
 
     @FXML
@@ -133,188 +222,61 @@ public class MainController {
 
         chatArea.appendText("Você: " + input + "\n");
         userInputField.clear();
-        sendButton.setDisable(true);
 
         new Thread(() -> {
-            try {
-                String inputNormalizado = normalizarTexto(input);
-                String grupoAlvo = "Peito";
-
-                if (inputNormalizado.contains("costas")) {
-                    grupoAlvo = "Costas";
-                } else if (inputNormalizado.contains("perna") || inputNormalizado.contains("coxa") || inputNormalizado.contains("inferiores")) {
-                    grupoAlvo = "Pernas";
-                } else if (inputNormalizado.contains("biceps") || inputNormalizado.contains("braco")) {
-                    grupoAlvo = "Bíceps";
-                }
-
-                List<Exercicio> exerciciosDoBanco = exercicioRepo.buscarPorGrupoMuscular(grupoAlvo);
-                String respostaIA = aiEngine.enviarMensagem(input, exerciciosDoBanco);
-                processarRespostaIA(respostaIA);
-            } catch (Exception e) {
-                Platform.runLater(() -> {
-                    chatArea.appendText("Erro no fluxo do chat: " + e.getMessage() + "\n");
-                    sendButton.setDisable(false);
-                });
-            }
+            String promptMapeado = "Você é o AuraFit Coach. Responda curto: " + input;
+            String resp = aiEngine.enviarMensagemLivre(promptMapeado);
+            Platform.runLater(() -> chatArea.appendText("AuraFit: " + resp + "\n\n"));
         }).start();
-    }
-
-    private void processarRespostaIA(String respostaCompleta) {
-        String textoExplicativo = respostaCompleta;
-        String jsonPuro = "";
-
-        try {
-            if (respostaCompleta.contains("```json") && respostaCompleta.contains("```")) {
-                int inicioJson = respostaCompleta.indexOf("```json") + 7;
-                int fimJson = respostaCompleta.indexOf("```", inicioJson);
-                jsonPuro = respostaCompleta.substring(inicioJson, fimJson).trim();
-                textoExplicativo = respostaCompleta.substring(0, respostaCompleta.indexOf("```json")).trim();
-            }
-
-            Map<String, List<Exercicio>> novosTreinos = new HashMap<>();
-
-            if (!jsonPuro.isEmpty()) {
-                JsonNode raiz = mapper.readTree(jsonPuro);
-                if (raiz.isArray()) {
-                    for (JsonNode node : raiz) {
-                        if (node.has("nome") && !node.get("nome").isNull()) {
-                            String nomeEx = node.get("nome").asText();
-                            Exercicio exDoBanco = exercicioRepo.buscarPorNome(nomeEx);
-
-                            if (exDoBanco != null) {
-                                String letraTreino = "A";
-                                if (node.has("treino") && !node.get("treino").isNull()) {
-                                    letraTreino = node.get("treino").asText().toUpperCase().trim();
-                                }
-                                novosTreinos.computeIfAbsent(letraTreino, k -> new ArrayList<>()).add(exDoBanco);
-                            }
-                        }
-                    }
-                }
-            }
-
-            final String textoParaExibir = textoParaExibirTratado(textoExplicativo);
-            Platform.runLater(() -> {
-                chatArea.appendText("AuraFit:\n" + textoParaExibir + "\n\n");
-                if (!novosTreinos.isEmpty()) {
-                    this.mapaFichasTreino.putAll(novosTreinos);
-                    handleAlternarTreinoVisual();
-                    chatArea.appendText("SISTEMA: Exercícios validados mapeados na sua grade atual!\n\n");
-                }
-                sendButton.setDisable(false);
-            });
-
-        } catch (Exception e) {
-            Platform.runLater(() -> {
-                chatArea.appendText("AuraFit:\n" + respostaCompleta + "\n\n");
-                sendButton.setDisable(false);
-            });
-            e.printStackTrace();
-        }
-    }
-
-    @FXML
-    private void handleAlternarTreinoVisual() {
-        String fichaSelecionada = comboTreinoAtual.getValue();
-        if (fichaSelecionada == null) return;
-
-        listaExerciciosTabela.clear();
-        btnRegistrarCarga.setDisable(true);
-        lblExercicioSelecionado.setText("Selecione um exercício acima para registrar");
-
-        List<Exercicio> exerciciosDaFicha = mapaFichasTreino.get(fichaSelecionada);
-        if (exerciciosDaFicha != null && !exerciciosDaFicha.isEmpty()) {
-            listaExerciciosTabela.setAll(exerciciosDaFicha);
-        }
-    }
-
-    private void atualizarOpcoesSeletorTreino(String divisao) {
-        Platform.runLater(() -> {
-            comboTreinoAtual.getItems().clear();
-            switch (divisao.toUpperCase()) {
-                case "AB":
-                case "ABAB":
-                    comboTreinoAtual.setItems(FXCollections.observableArrayList("A", "B"));
-                    break;
-                case "ABC":
-                    comboTreinoAtual.setItems(FXCollections.observableArrayList("A", "B", "C"));
-                    break;
-                case "ABCD":
-                    comboTreinoAtual.setItems(FXCollections.observableArrayList("A", "B", "C", "D"));
-                    break;
-                default:
-                    comboTreinoAtual.setItems(FXCollections.observableArrayList("A"));
-                    break;
-            }
-            comboTreinoAtual.setValue("A");
-        });
-    }
-
-    @FXML
-    private void handleRegistrarCarga() {
-        if (exercicioSelecionado == null || txtCarga.getText().isEmpty() || txtRepeticoes.getText().isEmpty() || txtSeries.getText().isEmpty()) {
-            exibirAlerta("Dados Vazios", "Preencha todas as caixas para salvar.", Alert.AlertType.WARNING);
-            return;
-        }
-
-        try {
-            double carga = Double.parseDouble(txtCarga.getText().replace(",", "."));
-            int reps = Integer.parseInt(txtRepeticoes.getText());
-            int series = Integer.parseInt(txtSeries.getText());
-
-            HistoricoCarga historico = new HistoricoCarga();
-            historico.setUsuario(usuarioLogado);
-            historico.setExercicio(exercicioSelecionado);
-            historico.setCargaUtilizada(carga);
-            historico.setRepeticoesFeitas(reps);
-            historico.setSeriesFeitas(series);
-            historico.setDataRegistro(LocalDateTime.now());
-
-            boolean sucesso = treinoRepo.registrarCarga(historico);
-
-            if (sucesso) {
-                exibirAlerta("Sucesso", "Métrica de carga salva no MySQL!", Alert.AlertType.INFORMATION);
-                txtCarga.clear();
-                txtRepeticoes.clear();
-                txtSeries.clear();
-            } else {
-                exibirAlerta("Erro", "Falha interna ao persistir dados de carga.", Alert.AlertType.ERROR);
-            }
-        } catch (NumberFormatException e) {
-            exibirAlerta("Formato Inválido", "Séries/Reps devem ser inteiros e Carga aceita decimais.", Alert.AlertType.ERROR);
-        }
     }
 
     @FXML
     private void handleSaveWorkout() {
-        if (listaExerciciosTabela.isEmpty()) {
-            exibirAlerta("Aviso", "Não há registros na tabela ativa para salvar.", Alert.AlertType.WARNING);
-            return;
+        DivisaoTreino divisaoObjeto = comboDivisao.getValue();
+        String tipoTreino = comboNivel.getValue();
+
+        if (divisaoObjeto != null && tipoTreino != null) {
+            boolean jaExiste = false;
+            for (String[] t : treinosSalvosCompartilhados) {
+                if (t[0].equals(divisaoObjeto.getNome()) && t[1].equals(tipoTreino)) {
+                    jaExiste = true;
+                    break;
+                }
+            }
+            if (!jaExiste) {
+                treinosSalvosCompartilhados.add(new String[]{divisaoObjeto.getNome(), tipoTreino});
+            }
         }
-        exibirAlerta("Sucesso", "Ficha gravada com êxito!", Alert.AlertType.INFORMATION);
+
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle("Sucesso");
+        a.setHeaderText(null);
+        a.setContentText("Rotina sincronizada com o Banco de Templates com sucesso!");
+        a.showAndWait();
+        handleNavegarParaMinhasFichas();
     }
 
-    private String normalizarTexto(String texto) {
-        if (texto == null) return "";
-        String termoLimpo = texto.toLowerCase().trim();
-        String normalizado = Normalizer.normalize(termoLimpo, Normalizer.Form.NFD);
-        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
-        return pattern.matcher(normalizado).replaceAll("");
+    // MODIFICAÇÃO: Separação clara dos dois caminhos de telas independentes
+    private void handleNavegarParaMinhasFichas() {
+        direcionarParaTela("/com/iafitness/aurafitengine/minhas-fichas-view.fxml", "AuraFit Engine - Minhas Fichas");
     }
 
-    private String textoParaExibirTratado(String texto) {
-        if (texto.trim().endsWith("---") || texto.trim().endsWith("-----------------------")) {
-            return texto.trim();
+    private void handleNavegarParaEstatiticas() {
+        direcionarParaTela("/com/iafitness/aurafitengine/evolucao-cargas-view.fxml", "AuraFit Engine - Centro de Estatísticas");
+    }
+
+    private void direcionarParaTela(String fxmlPath, String titulo) {
+        java.net.URL url = getClass().getResource(fxmlPath);
+        if (url == null) return;
+        try {
+            FXMLLoader loader = new FXMLLoader(url);
+            Parent root = loader.load();
+            Stage stage = (Stage) chatArea.getScene().getWindow();
+            stage.setScene(new Scene(root));
+            stage.setTitle(titulo);
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return texto.trim() + "\n\n-----------------------";
-    }
-
-    private void exibirAlerta(String titulo, String mensagem, Alert.AlertType tipo) {
-        Alert alert = new Alert(tipo);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
-        alert.setContentText(mensagem);
-        alert.showAndWait();
     }
 }

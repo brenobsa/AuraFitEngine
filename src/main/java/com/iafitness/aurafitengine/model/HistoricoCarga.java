@@ -11,10 +11,13 @@ public class HistoricoCarga {
     private double cargaUtilizada;
     private int repeticoesFeitas;
     private int seriesFeitas;
+    private String tipoTreino;
 
     public HistoricoCarga() {}
 
     // Getters e Setters
+    public String getTipoTreino() { return tipoTreino; }
+    public void setTipoTreino(String tipoTreino) { this.tipoTreino = tipoTreino; }
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
     public Usuario getUsuario() { return usuario; }
